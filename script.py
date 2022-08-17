@@ -92,13 +92,15 @@ def get_dockerfile_path(dockerfile):
     path = Path('/kaniko/Dockerfile')
 
     if parsed.scheme == 's3':
+        print("Getting file from s3: {} {}".format(parsed.netloc, parsed.path))
         s3.download_file(
             parsed.netloc,
-            parsed.path,
+            parsed.path[1:],
             str(path)
         )
         return path
     elif parsed.scheme in ['http', 'https']:
+        print("Getting file from http: {}".format(dockerfile))
         req = requests.get(dockerfile)
         with path.open('wb') as fout:
             fout.write(req.content)
@@ -212,6 +214,9 @@ def main(interactive, bucket, context_object, repo, dockerfile):
     clean_filesystem()
 
     dockerfile_path = get_dockerfile_path(dockerfile)
+
+    if not dockerfile_path:
+        sys.exit(2)
 
     if interactive:
         ret = interactive_main(bucket, context_object, repo)

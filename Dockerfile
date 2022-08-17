@@ -24,4 +24,5 @@ ENV DOCKER_CREDENTIAL_GCR_CONFIG=/kaniko/.config/gcloud/docker_credential_gcr_co
 ENV I_AM_RUNNING_IN_DOCKER=true
 
 # Start application
-cmd ["/usr/bin/python3", "/kaniko/app/script.py"]
+entrypoint ["/usr/bin/python3", "/kaniko/app/script.py"]
+cmd []
