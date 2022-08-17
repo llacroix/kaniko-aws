@@ -36,3 +36,27 @@ Variable                  | Usage
 `ECR_IMAGE`               | Name of the ECR destination image
 `S3_BUCKET`               | Bucket for the build context
 `S3_OBJECT`               | Object name of the build context
+
+Dockerfile Example:
+
+    FROM ubuntu:22.04
+
+    RUN set -x; \
+        apt-get update && \
+        apt-get install -y python3 python3-pip \
+
+    COPY . /project
+
+    RUN /usr/bin/python3 -m pip -r /project/requirements.txt
+
+    ENTRYPOINT ["/usr/bin/python3", "/project/scripts/main.py"]
+    CMD []
+    
+    
+Then you only have to provide the necessary files in the context data to build your project without having
+to make completely custom dockerfiles. It's particularly useful in a context where the only changes in
+the build context are for example custom modules that you'd want to have inside an application.
+
+This way you can automate building relatively complex applications without increasing the complexity
+of the build process. Dockerfile can be reused instead of having to maintain dockerfiles within
+each single projects.
