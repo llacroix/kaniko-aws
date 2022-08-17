@@ -193,6 +193,12 @@ def interactive_main():
     'dockerfile'
 )
 def main(interactive, bucket, context_object, repo, dockerfile):
+    is_running_in_docker = os.environ.get('I_AM_RUNNING_IN_DOCKER', False)
+
+    if not is_running_in_docker:
+        print("Do not run this outside of docker.")
+        sys.exit(1)
+
     if not bucket:
         bucket = os.environ.get('S3_BUCKET')
 
@@ -213,3 +219,6 @@ def main(interactive, bucket, context_object, repo, dockerfile):
         ret = automated_build(dockerfile_path, bucket, context_object, repo)
 
     sys.exit(ret)
+
+
+main()
