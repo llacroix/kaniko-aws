@@ -27,8 +27,6 @@ _logger = logging.getLogger(__name__)
 s3 = boto3.client('s3')
 ecr = boto3.client('ecr')
 
-CONTEXT_DIR = "/kaniko/build"
-
 
 def preload_application():
     get_all_ui_styles()
@@ -84,42 +82,84 @@ def clean_filesystem():
                 pass
 
 
-def get_dockerfile_path(dockerfile):
+def get_resource(uri, target):
+    """
+    Get a resource from s3 or http and store it in
+    the target path.
+    """
+    parsed = urlparse(uri)
+    path = Path(target)
+
+    if parsed.scheme == 's3':
+        print(
+            "Getting file from s3: {} {}".format(
+                parsed.netloc, parsed.path[1:]
+            )
+        )
+        s3.download_file(
+            parsed.netloc,
+            parsed.path[1:],
+            str(path)
+        )
+
+        return path
+    elif parsed.scheme in ['http', 'https']:
+        print("Getting file from http: {}".format(uri))
+        req = requests.get(uri)
+        with path.open('wb') as fout:
+            fout.write(req.content)
+
+        return path
+
+
+def get_dockerfile(dockerfile):
     parsed = urlparse(dockerfile)
     if not parsed.netloc:
         return Path(dockerfile)
 
     path = Path('/kaniko/Dockerfile')
 
-    if parsed.scheme == 's3':
-        print("Getting file from s3: {} {}".format(parsed.netloc, parsed.path))
-        s3.download_file(
-            parsed.netloc,
-            parsed.path[1:],
-            str(path)
-        )
-        return path
-    elif parsed.scheme in ['http', 'https']:
-        print("Getting file from http: {}".format(dockerfile))
-        req = requests.get(dockerfile)
-        with path.open('wb') as fout:
-            fout.write(req.content)
-        return path
+    return get_resource(dockerfile, path)
 
 
-def build_image(dockerfile="/kaniko/Dockerfile", target=None):
+def get_context(uri):
+    parsed = urlparse(uri)
+    if not parsed.netloc:
+        return Path(uri)
+
+    context_zip = get_resource(uri, Path("/tmp/context.zip"))
+
+    path = Path("/kaniko/context")
+
+    with zipfile.ZipFile(str(context_zip), 'r') as zip_ref:
+        zip_ref.extractall(str(path))
+
+    context_zip.unlink()
+
+    return path
+
+
+def build_image(
+    dockerfile="/kaniko/Dockerfile",
+    context=None,
+    destination=None
+):
     params = [
         '/kaniko/executor',
-        '--context', CONTEXT_DIR,
+        '--cleanup',
         '-f', str(dockerfile),
-        '--cleanup'
     ]
 
-    if target is None:
+    if context:
+        params += [
+            '--context', str(context)
+        ]
+
+    if destination is None:
         params.append('--no-push')
     else:
         params += [
-            '--destination', target
+            '--destination', destination
         ]
 
     return run(params)
@@ -145,31 +185,29 @@ def docker_login():
         fout.write(json.dumps(data))
 
 
-def create_build_context(bucket, object_name):
-    build_path = Path(CONTEXT_DIR)
-
-    if build_path.exists():
-        rmtree(build_path)
-
-    build_path.mkdir()
-
-    if bucket and object_name:
-        s3.download_file(bucket, object_name, '/tmp/build.zip')
-
-        with zipfile.ZipFile('/tmp/build.zip', 'r') as zip_ref:
-            zip_ref.extractall(str(build_path))
-
-        Path('/tmp/build.zip').unlink()
-
-
-def automated_build(dockerfile_path, bucket, data_object, repo):
-    create_build_context(bucket, data_object)
+def automated_build(
+    dockerfile,
+    dockerfile_path,
+    context,
+    context_path,
+    destination
+):
     docker_login()
-    build_image(dockerfile_path, target=repo)
+    build_image(
+        dockerfile_path,
+        context=context_path,
+        destination=destination
+    )
     return 0
 
 
-def interactive_main():
+def interactive_main(
+    dockerfile,
+    dockerfile_path,
+    context,
+    context_path,
+    destination
+):
     return embed(globals(), locals())
 
 
@@ -180,48 +218,59 @@ def interactive_main():
     default=False
 )
 @click.option(
-    '--bucket',
-    help="S3 Bucket for data",
+    '-c',
+    '--context',
+    help=(
+        "URL or Path to context. It can use url of with the "
+        "s3, http and https scheme."
+    )
 )
 @click.option(
-    '--context-object',
-    help="S3 Object containing context data",
-)
-@click.option(
-    '--repo',
-    help="Destination Repository"
+    '-d',
+    '--destination',
+    help="Destination Image"
 )
 @click.argument(
     'dockerfile'
 )
-def main(interactive, bucket, context_object, repo, dockerfile):
+def main(interactive, context, destination, dockerfile):
     is_running_in_docker = os.environ.get('I_AM_RUNNING_IN_DOCKER', False)
 
     if not is_running_in_docker:
         print("Do not run this outside of docker.")
         sys.exit(1)
 
-    if not bucket:
-        bucket = os.environ.get('S3_BUCKET')
+    if not context:
+        context = os.environ.get('CONTEXT')
 
-    if not context_object:
-        context_object = os.environ.get('S3_OBJECT')
-
-    if not repo:
-        repo = os.environ.get('ECR_REPO')
+    if not destination:
+        destination = os.environ.get('DESTINATION_IMAGE')
 
     preload_application()
     clean_filesystem()
 
-    dockerfile_path = get_dockerfile_path(dockerfile)
+    dockerfile_path = get_dockerfile(dockerfile)
+    context_path = get_context(context)
 
     if not dockerfile_path:
         sys.exit(2)
 
     if interactive:
-        ret = interactive_main(bucket, context_object, repo)
+        ret = interactive_main(
+            dockerfile,
+            dockerfile_path,
+            context,
+            context_path,
+            destination
+        )
     else:
-        ret = automated_build(dockerfile_path, bucket, context_object, repo)
+        ret = automated_build(
+            dockerfile,
+            dockerfile_path,
+            context,
+            context_path,
+            destination
+        )
 
     sys.exit(ret)
 

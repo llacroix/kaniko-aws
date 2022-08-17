@@ -17,12 +17,26 @@ in s3 as a zip file.
 How to use:
 ===========
 
-To create a docker image, it's as simple as calling this command line locally:
+First, you have to push a dockerfile to s3 or have an url from which it can be fetched. 
+If it was stored on s3, you can use the url to the file if it's publicly available, or
+you can use the s3 uri to the file, or you can use a presigned url that gives read access
+to the dockerfile.
 
-    docker run -it -e AWS_DEFAULT_REGION=[region] -e AWS_ACCESS_KEY_ID=[secret] -e AWS_SECRET_ACCESS_KEY=[secret] kaniko-aws:latest s3://[bucket]/[object] 
+Then if you have to build the docker image with some context data. You have to push that
+data in a zip file on s3 and pass the file to the builder using environment variable or
+passing `--bucket` and `--context-object`. 
 
+You need to set environment variables for AWS and define the region in which the ECR image
+will be stored.
 
-The dockerfile also take as parameter an url or a local path. It's possible for example to pass a presigned s3 url.
+    docker run -it \
+        -e AWS_DEFAULT_REGION=[region] \
+        -e AWS_ACCESS_KEY_ID=[secret] \
+        -e AWS_SECRET_ACCESS_KEY=[secret] \
+        kaniko-aws:latest \
+            --context $CONTEXT_URI \
+            --destination $DESTINATION_IMAGE \
+            $DOCKERFILE_URI
 
 
 Environment Variables:
@@ -33,9 +47,8 @@ Variable                  | Usage
 `AWS_ACCESS_KEY_ID`       | Authenticate to AWS
 `AWS_SECRET_ACCESS_KEY_ID`| Authenticate to AWS
 `AWS_DEFAULT_REGION`      | In which region the ECR registry is
-`ECR_IMAGE`               | Name of the ECR destination image
-`S3_BUCKET`               | Bucket for the build context
-`S3_OBJECT`               | Object name of the build context
+`CONTEXT`                 | Context URI or local path to the context data
+`DESTINATION_IMAGE        | Destination to push ECR
 
 Dockerfile Example:
 
