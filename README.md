@@ -30,10 +30,10 @@ You need to set environment variables for AWS and define the region in which the
 will be stored.
 
     docker run -it \
-        -e AWS_DEFAULT_REGION=[region] \
-        -e AWS_ACCESS_KEY_ID=[secret] \
-        -e AWS_SECRET_ACCESS_KEY=[secret] \
-        kaniko-aws:latest \
+        -e AWS_DEFAULT_REGION=$AWS_REGION \
+        -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY \
+        -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET \
+        llacroix/kaniko-aws:latest
             --context $CONTEXT_URI \
             --destination $DESTINATION_IMAGE \
             $DOCKERFILE_URI
@@ -48,7 +48,7 @@ Variable                  | Usage
 `AWS_SECRET_ACCESS_KEY_ID`| Authenticate to AWS
 `AWS_DEFAULT_REGION`      | In which region the ECR registry is
 `CONTEXT`                 | Context URI or local path to the context data
-`DESTINATION_IMAGE        | Destination to push ECR
+`DESTINATION_IMAGE`       | Destination to push ECR
 
 Dockerfile Example:
 
