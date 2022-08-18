@@ -73,3 +73,64 @@ the build context are for example custom modules that you'd want to have inside 
 This way you can automate building relatively complex applications without increasing the complexity
 of the build process. Dockerfile can be reused instead of having to maintain dockerfiles within
 each single projects.
+
+How to use it on AWS:
+=====================
+
+If you were looking to use this with AWS Lambda, you're going to be a bit deceived. The reason why
+it can't work with AWS lambda is because the AWS lambda filesystem is readonly. Kaniko's principle
+is to modify the filesystem and watch the changes made to it. For that reason, it's simply not
+possible to run kaniko with AWS Lambda.
+
+That being said, it's possible to use this with AWS Fargate or even just spawning services using EC2
+instances.
+
+All you need to do is to create a task definition with a container running this image. Then you can
+use this python script as an example on how to run it. Then you'll need some execution roles with
+some available policy to be able to read from s3 and push to s3 and push to ecr.
+
+
+    import boto3
+
+    ecs = boto3.client('ecs')
+
+    # VPC Info
+    subnets = [...]
+    security_groups = [...]
+
+    # Build params
+    context = "context on s3"
+    destination = "image_name_on_ecr"
+    dockerfile = "dockerfile on s3"
+
+    # Task info/cluster
+    cluster_name = "kaniko-cluster"
+    task_def = "kaniko"
+
+    return ecs.run_task(
+        cluster=cluster_name,
+        count=1,
+        launchType='FARGATE',
+        networkConfiguration={
+            'awsvpcConfiguration': {
+                'subnets': subnets,
+                'securityGroups': security_groups
+                'assignPublicIp': 'DISABLED'
+            }
+        },
+        overrides={
+            'containerOverrides': [
+                {
+                    'name': "builder",
+                    "command": [
+                        "--context",
+                        context,
+                        "--destination",
+                        destination,
+                        dockerfile
+                    ],
+                }
+            ],
+        },
+        taskDefinition=task_def
+    )
