@@ -1,6 +1,9 @@
 Kaniko AWS
 ==========
 
+![Docker Pulls](https://img.shields.io/docker/pulls/llacroix/kaniko-aws)
+![Docker Image Size (tag)](https://img.shields.io/docker/image-size/llacroix/kaniko-aws/latest)
+
 Kaniko AWS is a custom image based on kaniko that is designed to work with AWS.
 
 - The dockerfile can be fetched from local, S3 or anywhere with HTTP.
