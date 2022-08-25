@@ -1,8 +1,8 @@
 Kaniko AWS
 ==========
 
-![Docker Pulls](https://img.shields.io/docker/pulls/llacroix/kaniko-aws)
-![Docker Image Size (tag)](https://img.shields.io/docker/image-size/llacroix/kaniko-aws/latest)
+[![Docker Pulls](https://img.shields.io/docker/pulls/llacroix/kaniko-aws)](https://hub.docker.com/repository/docker/llacroix/kaniko-aws)
+[![Docker Image Size (tag)](https://img.shields.io/docker/image-size/llacroix/kaniko-aws/latest)](https://hub.docker.com/repository/docker/llacroix/kaniko-aws)
 
 Kaniko AWS is a custom image based on kaniko that is designed to work with AWS.
 
